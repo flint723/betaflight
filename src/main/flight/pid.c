@@ -94,9 +94,9 @@ void resetPidProfile(pidProfile_t *pidProfile)
 {
     RESET_CONFIG(pidProfile_t, pidProfile,
         .pid = {
-            [PID_ROLL] =  { 40, 40, 30 },
-            [PID_PITCH] = { 58, 50, 35 },
-            [PID_YAW] =   { 70, 45, 20 },
+            [PID_ROLL] =  { 46, 45, 25 },
+            [PID_PITCH] = { 50, 50, 27 },
+            [PID_YAW] =   { 65, 45, 20 },
             [PID_ALT] =   { 50, 0, 0 },
             [PID_POS] =   { 15, 0, 0 },     // POSHOLD_P * 100, POSHOLD_I * 100,
             [PID_POSR] =  { 34, 14, 53 },   // POSHOLD_RATE_P * 10, POSHOLD_RATE_I * 100, POSHOLD_RATE_D * 1000,
@@ -110,20 +110,20 @@ void resetPidProfile(pidProfile_t *pidProfile)
         .pidSumLimitYaw = PIDSUM_LIMIT_YAW,
         .yaw_lowpass_hz = 0,
         .dterm_lowpass_hz = 100,    // filtering ON by default
-        .dterm_lowpass2_hz = 0,    // second Dterm LPF OFF by default
-        .dterm_notch_hz = 260,
+        .dterm_lowpass2_hz = 200,    // second Dterm LPF ON by default 
+        .dterm_notch_hz = 0,    // Dterm notch OFF by default, not needed with Dynamic notch enabled
         .dterm_notch_cutoff = 160,
-        .dterm_filter_type = FILTER_BIQUAD,
+        .dterm_filter_type = FILTER_PT1,
         .itermWindupPointPercent = 50,
         .vbatPidCompensation = 0,
         .pidAtMinThrottle = PID_STABILISATION_ON,
         .levelAngleLimit = 55,
-        .setpointRelaxRatio = 100,
-        .dtermSetpointWeight = 0,
+        .setpointRelaxRatio = 0,
+        .dtermSetpointWeight = 50,
         .yawRateAccelLimit = 100,
         .rateAccelLimit = 0,
         .itermThrottleThreshold = 350,
-        .itermAcceleratorGain = 1000,
+        .itermAcceleratorGain = 3000,
         .crash_time = 500,          // ms
         .crash_delay = 0,           // ms
         .crash_recovery_angle = 10, // degrees
