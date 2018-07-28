@@ -36,6 +36,7 @@ COMMON_SRC = \
             drivers/transponder_ir_arcitimer.c \
             drivers/transponder_ir_ilap.c \
             drivers/transponder_ir_erlt.c \
+            fc/board_info.c \
             fc/config.c \
             fc/fc_dispatch.c \
             fc/fc_hardfaults.c \
@@ -50,6 +51,8 @@ COMMON_SRC = \
             io/serial.c \
             io/statusindicator.c \
             io/transponder_ir.c \
+            io/usb_cdc_hid.c \
+            io/usb_msc.c \
             msp/msp_serial.c \
             scheduler/scheduler.c \
             sensors/adcinternal.c \
@@ -139,12 +142,10 @@ FC_SRC = \
             io/displayport_max7456.c \
             io/displayport_msp.c \
             io/displayport_oled.c \
-            io/displayport_rcdevice.c \
             io/displayport_srxl.c \
             io/displayport_crsf.c \
             io/rcdevice_cam.c \
             io/rcdevice.c \
-            io/rcdevice_osd.c \
             io/gps.c \
             io/ledstrip.c \
             io/osd.c \
@@ -282,6 +283,7 @@ SIZE_OPTIMISED_SRC := $(SIZE_OPTIMISED_SRC) \
             drivers/vtx_rtc6705.c \
             drivers/vtx_common.c \
             fc/fc_init.c \
+            fc/board_info.c \
             config/config_eeprom.c \
             config/feature.c \
             config/config_streamer.c \
@@ -295,6 +297,7 @@ SIZE_OPTIMISED_SRC := $(SIZE_OPTIMISED_SRC) \
             io/serial_4way_avrootloader.c \
             io/serial_4way_stk500v2.c \
             io/transponder_ir.c \
+            io/usb_cdc_hid.c \
             msp/msp_serial.c \
             cms/cms.c \
             cms/cms_menu_blackbox.c \

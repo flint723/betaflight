@@ -78,6 +78,7 @@
 #include "drivers/usb_msc.h"
 #endif
 
+#include "fc/board_info.h"
 #include "fc/config.h"
 #include "fc/fc_init.h"
 #include "fc/fc_tasks.h"
@@ -90,6 +91,7 @@
 #include "msp/msp_serial.h"
 
 #include "pg/adc.h"
+#include "pg/beeper.h"
 #include "pg/beeper_dev.h"
 #include "pg/bus_i2c.h"
 #include "pg/bus_spi.h"
@@ -98,6 +100,7 @@
 #include "pg/piniobox.h"
 #include "pg/pg.h"
 #include "pg/rx.h"
+#include "pg/rx_spi.h"
 #include "pg/rx_pwm.h"
 #include "pg/sdcard.h"
 #include "pg/vcd.h"
@@ -108,9 +111,7 @@
 
 #include "io/beeper.h"
 #include "io/displayport_max7456.h"
-#include "io/displayport_rcdevice.h"
 #include "io/displayport_srxl.h"
-#include "io/displayport_crsf.h"
 #include "io/serial.h"
 #include "io/flashfs.h"
 #include "io/gps.h"
@@ -237,11 +238,15 @@ void init(void)
 
     initEEPROM();
 
-    ensureEEPROMContainsValidData();
-    readEEPROM();
+    ensureEEPROMStructureIsValid();
 
-    // !!TODO: Check to be removed when moving to generic targets
-    if (strncasecmp(systemConfig()->boardIdentifier, TARGET_BOARD_IDENTIFIER, sizeof(TARGET_BOARD_IDENTIFIER))) {
+    bool readSuccess = readEEPROM();
+
+#if defined(USE_BOARD_INFO)
+    initBoardInformation();
+#endif
+
+    if (!readSuccess || !isEEPROMVersionValid() || strncasecmp(systemConfig()->boardIdentifier, TARGET_BOARD_IDENTIFIER, sizeof(TARGET_BOARD_IDENTIFIER))) {
         resetEEPROM();
     }
 
@@ -346,7 +351,6 @@ void init(void)
         idlePulse = flight3DConfig()->neutral3d;
     }
     if (motorConfig()->dev.motorPwmProtocol == PWM_TYPE_BRUSHED) {
-        featureClear(FEATURE_3D);
         idlePulse = 0; // brushed motors
     }
     /* Motors needs to be initialized soon as posible because hardware initialization
@@ -465,7 +469,10 @@ void init(void)
     adcConfigMutable()->current.enabled = (batteryConfig()->currentMeterSource == CURRENT_METER_ADC);
 
     // The FrSky D SPI RX sends RSSI_ADC_PIN (if configured) as A2
-    adcConfigMutable()->rssi.enabled = feature(FEATURE_RSSI_ADC) || (feature(FEATURE_RX_SPI) && rxConfig()->rx_spi_protocol == RX_SPI_FRSKY_D);
+    adcConfigMutable()->rssi.enabled = feature(FEATURE_RSSI_ADC);
+#ifdef USE_RX_SPI
+    adcConfigMutable()->rssi.enabled |= (feature(FEATURE_RX_SPI) && rxSpiConfig()->rx_spi_protocol == RX_SPI_FRSKY_D);
+#endif
     adcInit(adcConfig());
 #endif
 
@@ -514,10 +521,16 @@ void init(void)
     for (int i = 0; i < 10; i++) {
         LED1_TOGGLE;
         LED0_TOGGLE;
+#if defined(USE_BEEPER)
         delay(25);
-        if (!(getBeeperOffMask() & (1 << (BEEPER_SYSTEM_INIT - 1)))) BEEP_ON;
+        if (!(beeperConfig()->beeper_off_flags & BEEPER_GET_FLAG(BEEPER_SYSTEM_INIT))) {
+            BEEP_ON;
+        }
         delay(25);
         BEEP_OFF;
+#else
+        delay(50);
+#endif
     }
     LED0_OFF;
     LED1_OFF;
@@ -553,7 +566,7 @@ void init(void)
 #if defined(USE_MAX7456)
         // If there is a max7456 chip for the OSD then use it
         osdDisplayPort = max7456DisplayPortInit(vcdProfile());
-#elif defined(USE_OSD_OVER_MSP_DISPLAYPORT) // OSD over MSP; not supported (yet)
+#elif defined(USE_CMS) && defined(USE_MSP_DISPLAYPORT) && defined(USE_OSD_OVER_MSP_DISPLAYPORT) // OSD over MSP; not supported (yet)
         osdDisplayPort = displayPortMspInit();
 #endif
         // osdInit  will register with CMS by itself.
@@ -586,10 +599,6 @@ void init(void)
 #if defined(USE_CMS) && defined(USE_SPEKTRUM_CMS_TELEMETRY) && defined(USE_TELEMETRY_SRXL)
     // Register the srxl Textgen telemetry sensor as a displayport device
     cmsDisplayPortRegister(displayPortSrxlInit());
-#endif
-
-#if defined(USE_CMS) && defined(USE_CRSF_CMS_TELEMETRY) && defined(USE_TELEMETRY)
-    cmsDisplayPortRegister(displayPortCrsfInit());
 #endif
 
 #ifdef USE_GPS

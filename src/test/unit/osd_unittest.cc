@@ -45,9 +45,11 @@ extern "C" {
     #include "flight/pid.h"
     #include "flight/imu.h"
 
+    #include "io/beeper.h"
     #include "io/gps.h"
     #include "io/osd.h"
 
+    #include "sensors/acceleration.h"
     #include "sensors/battery.h"
 
     #include "rx/rx.h"
@@ -67,6 +69,9 @@ extern "C" {
     int16_t GPS_directionToHome;
     int32_t GPS_coord[2];
     gpsSolutionData_t gpsSol;
+
+    acc_t acc;
+    float accAverage[XYZ_AXIS_COUNT];
 
     PG_REGISTER(batteryConfig_t, batteryConfig, PG_BATTERY_CONFIG, 0);
     PG_REGISTER(blackboxConfig_t, blackboxConfig, PG_BLACKBOX_CONFIG, 0);
@@ -372,7 +377,7 @@ TEST(OsdTest, TestStatsImperial)
     displayPortTestBufferSubstring(2, row++, "MIN BATTERY       : 14.7%c", SYM_VOLT);
     displayPortTestBufferSubstring(2, row++, "END BATTERY       : 15.2%c", SYM_VOLT);
     displayPortTestBufferSubstring(2, row++, "MIN RSSI          : 25%%");
-    displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      : 6.5%c", SYM_FT);
+    displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      :    6.5%c", SYM_FT);
 }
 
 /*
@@ -423,7 +428,7 @@ TEST(OsdTest, TestStatsMetric)
     displayPortTestBufferSubstring(2, row++, "MIN BATTERY       : 14.7%c", SYM_VOLT);
     displayPortTestBufferSubstring(2, row++, "END BATTERY       : 15.2%c", SYM_VOLT);
     displayPortTestBufferSubstring(2, row++, "MIN RSSI          : 25%%");
-    displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      : 2.0%c", SYM_M);
+    displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      :    2.0%c", SYM_M);
 }
 
 /*
@@ -486,7 +491,7 @@ TEST(OsdTest, TestAlarms)
         displayPortTestBufferSubstring(12, 1, "%c16.8%c", SYM_BATT_FULL, SYM_VOLT);
         displayPortTestBufferSubstring(1,  1, "%c00:", SYM_FLY_M); // only test the minute part of the timer
         displayPortTestBufferSubstring(20, 1, "%c01:", SYM_ON_M); // only test the minute part of the timer
-        displayPortTestBufferSubstring(23, 7, "   0.0%c", SYM_M);
+        displayPortTestBufferSubstring(23, 7, "    .0%c", SYM_M);
     }
 
     // when
@@ -717,7 +722,7 @@ TEST(OsdTest, TestElementAltitude)
     osdRefresh(simulationTime);
 
     // then
-    displayPortTestBufferSubstring(23, 7, "   0.0%c", SYM_M);
+    displayPortTestBufferSubstring(23, 7, "    .0%c", SYM_M);
 
     // when
     simulationAltitude = 247;
@@ -742,6 +747,14 @@ TEST(OsdTest, TestElementAltitude)
 
     // then
     displayPortTestBufferSubstring(23, 7, "  -2.4%c", SYM_M);
+
+    // when
+    simulationAltitude = -70;
+    displayClearScreen(&testDisplayPort);
+    osdRefresh(simulationTime);
+
+    // then
+    displayPortTestBufferSubstring(23, 7, "   -.7%c", SYM_M);
 }
 
 /*
@@ -1015,11 +1028,13 @@ extern "C" {
 
     uint16_t getRssi(void) { return rssi; }
 
+    uint8_t getRssiPercent(void) { return scaleRange(rssi, 0, RSSI_MAX_VALUE, 0, 100); }
+
     uint16_t getCoreTemperatureCelsius(void) { return simulationCoreTemperature; }
 
     bool isFlipOverAfterCrashMode(void) {
         return false;
     }
 
-    float pidItermAccelerator(void) { return 1.0; }
+    bool pidOsdAntiGravityActive(void) { return false; }
 }

@@ -240,6 +240,7 @@ const char *armingDisableFlagNames[]= {
 
 void getTaskInfo(cfTaskId_e, cfTaskInfo_t *) {}
 void getCheckFuncInfo(cfCheckFuncInfo_t *) {}
+void schedulerResetTaskMaxExecutionTime(cfTaskId_e) {}
 
 const char * const targetName = "UNITTEST";
 const char* const buildDate = "Jan 01 2017";
@@ -273,4 +274,11 @@ void serialSetCtrlLineState(serialPort_t *, uint16_t ) {}
 
 void serialSetBaudRateCb(serialPort_t *, void (*)(serialPort_t *context, uint32_t baud), serialPort_t *) {}
 
+char *getBoardName(void) { return NULL; };
+char *getManufacturerId(void) { return NULL; };
+bool boardInformationIsSet(void) { return true; };
+
+bool setBoardName(char *newBoardName) { UNUSED(newBoardName); return true; };
+bool setManufacturerId(char *newManufacturerId) { UNUSED(newManufacturerId); return true; };
+bool persistBoardInformation(void) { return true; };
 }

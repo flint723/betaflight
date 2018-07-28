@@ -38,7 +38,6 @@ typedef enum {
     BOXGPSHOLD,
     BOXHEADFREE,
     BOXPASSTHRU,
-    BOXRANGEFINDER,
     BOXFAILSAFE,
     BOXGPSRESCUE,
     BOXID_FLIGHTMODE_LAST = BOXGPSRESCUE,
@@ -49,16 +48,11 @@ typedef enum {
     BOXANTIGRAVITY,
     BOXHEADADJ,
     BOXCAMSTAB,
-    BOXCAMTRIG,
     BOXBEEPERON,
-    BOXLEDMAX,
     BOXLEDLOW,
-    BOXLLIGHTS,
     BOXCALIB,
-    BOXGOV,
     BOXOSD,
     BOXTELEMETRY,
-    BOXGTUNE,
     BOXSERVO1,
     BOXSERVO2,
     BOXSERVO3,
@@ -80,6 +74,7 @@ typedef enum {
     BOXUSER3,
     BOXUSER4,
     BOXPIDAUDIO,
+    BOXACROTRAINER,
     CHECKBOX_ITEM_COUNT
 } boxId_e;
 
@@ -116,6 +111,7 @@ typedef struct modeActivationCondition_s {
     uint8_t auxChannelIndex;
     channelRange_t range;
     modeLogic_e modeLogic;
+    boxId_e linkedTo;
 } modeActivationCondition_t;
 
 PG_DECLARE_ARRAY(modeActivationCondition_t, MAX_MODE_ACTIVATION_CONDITION_COUNT, modeActivationConditions);
@@ -128,11 +124,10 @@ typedef struct modeActivationProfile_s {
 
 bool IS_RC_MODE_ACTIVE(boxId_e boxId);
 void rcModeUpdate(boxBitmask_t *newState);
-void preventModeChanges(void);
 
 bool isAirmodeActive(void);
-bool isAntiGravityModeActive(void);
 
 bool isRangeActive(uint8_t auxChannelIndex, const channelRange_t *range);
 void updateActivatedModes(void);
 bool isModeActivationConditionPresent(boxId_e modeId);
+void removeModeActivationCondition(boxId_e modeId);

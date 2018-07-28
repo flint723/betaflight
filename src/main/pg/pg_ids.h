@@ -131,7 +131,10 @@
 #define PG_TIMER_IO_CONFIG 534 // used to store the index for timer use in timerHardware array in target.c
 #define PG_SPI_PREINIT_IPU_CONFIG 535
 #define PG_SPI_PREINIT_OPU_CONFIG 536
-#define PG_BETAFLIGHT_END 536
+#define PG_RX_SPI_CONFIG 537
+#define PG_BOARD_CONFIG 538
+#define PG_RCDEVICE_CONFIG 539
+#define PG_BETAFLIGHT_END 539
 
 
 // OSD configuration (subject to change)

@@ -118,16 +118,22 @@ float powerf(float base, int exp) {
     return result;
 }
 
-int32_t applyDeadband(int32_t value, int32_t deadband)
+int32_t applyDeadband(const int32_t value, const int32_t deadband)
 {
     if (ABS(value) < deadband) {
-        value = 0;
-    } else if (value > 0) {
-        value -= deadband;
-    } else if (value < 0) {
-        value += deadband;
+        return 0;
     }
-    return value;
+
+    return value >= 0 ? value - deadband : value + deadband;
+}
+
+float fapplyDeadband(const float value, const float deadband)
+{
+    if (fabsf(value) < deadband) {
+        return 0;
+    }
+
+    return value >= 0 ? value - deadband : value + deadband;
 }
 
 void devClear(stdev_t *dev)
@@ -167,6 +173,12 @@ float degreesToRadians(int16_t degrees)
 int scaleRange(int x, int srcFrom, int srcTo, int destFrom, int destTo) {
     long int a = ((long int) destTo - (long int) destFrom) * ((long int) x - (long int) srcFrom);
     long int b = (long int) srcTo - (long int) srcFrom;
+    return (a / b) + destFrom;
+}
+
+float scaleRangef(float x, float srcFrom, float srcTo, float destFrom, float destTo) {
+    float a = (destTo - destFrom) * (x - srcFrom);
+    float b = srcTo - srcFrom;
     return (a / b) + destFrom;
 }
 

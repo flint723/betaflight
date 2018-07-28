@@ -68,14 +68,15 @@
 #include "rx/targetcustomserial.h"
 
 
-//#define DEBUG_RX_SIGNAL_LOSS
-
 const char rcChannelLetters[] = "AERT12345678abcdefgh";
 
 static uint16_t rssi = 0;                  // range: [0;1023]
 static timeUs_t lastMspRssiUpdateUs = 0;
 
 #define MSP_RSSI_TIMEOUT_US 1500000   // 1.5 sec
+
+#define RSSI_ADC_DIVISOR (4096 / 1024)
+#define RSSI_OFFSET_SCALING (1024 / 100.0f)
 
 rssiSource_e rssiSource;
 
@@ -101,6 +102,7 @@ uint32_t rcInvalidPulsPeriod[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 #define PPM_AND_PWM_SAMPLE_COUNT 3
 
 #define DELAY_50_HZ (1000000 / 50)
+#define DELAY_33_HZ (1000000 / 33)
 #define DELAY_10_HZ (1000000 / 10)
 #define DELAY_5_HZ (1000000 / 5)
 #define SKIP_RC_ON_SUSPEND_PERIOD 1500000           // 1.5 second period in usec (call frequency independent)
@@ -285,7 +287,7 @@ void rxInit(void)
 
 #ifdef USE_RX_SPI
     if (feature(FEATURE_RX_SPI)) {
-        const bool enabled = rxSpiInit(rxConfig(), &rxRuntimeConfig);
+        const bool enabled = rxSpiInit(rxSpiConfig(), &rxRuntimeConfig);
         if (!enabled) {
             featureClear(FEATURE_RX_SPI);
             rxRuntimeConfig.rcReadRawFn = nullReadRawRC;
@@ -372,10 +374,10 @@ bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTime)
 
             if (frameStatus & (RX_FRAME_FAILSAFE | RX_FRAME_DROPPED)) {
             	// No (0%) signal
-            	setRssiUnfiltered(0, RSSI_SOURCE_FRAME_ERRORS);
+            	setRssi(0, RSSI_SOURCE_FRAME_ERRORS);
             } else {
             	// Valid (100%) signal
-            	setRssiUnfiltered(RSSI_MAX_VALUE, RSSI_SOURCE_FRAME_ERRORS);
+            	setRssi(RSSI_MAX_VALUE, RSSI_SOURCE_FRAME_ERRORS);
             }
         }
 
@@ -489,11 +491,8 @@ static void detectAndApplySignalLossBehaviour(void)
 
     const bool useValueFromRx = rxSignalReceived && !rxIsInFailsafeMode;
 
-#ifdef DEBUG_RX_SIGNAL_LOSS
-    debug[0] = rxSignalReceived;
-    debug[1] = rxIsInFailsafeMode;
-    debug[2] = rxRuntimeConfig.rcReadRawFn(&rxRuntimeConfig, 0);
-#endif
+    DEBUG_SET(DEBUG_RX_SIGNAL_LOSS, 0, rxSignalReceived);
+    DEBUG_SET(DEBUG_RX_SIGNAL_LOSS, 1, rxIsInFailsafeMode);
 
     rxFlightChannelsValid = true;
     for (int channel = 0; channel < rxChannelCount; channel++) {
@@ -530,10 +529,7 @@ static void detectAndApplySignalLossBehaviour(void)
             rcData[channel] = getRxfailValue(channel);
         }
     }
-
-#ifdef DEBUG_RX_SIGNAL_LOSS
-    debug[3] = rcData[THROTTLE];
-#endif
+    DEBUG_SET(DEBUG_RX_SIGNAL_LOSS, 3, rcData[THROTTLE]);
 }
 
 bool calculateRxChannelsAndUpdateFailsafe(timeUs_t currentTimeUs)
@@ -547,7 +543,7 @@ bool calculateRxChannelsAndUpdateFailsafe(timeUs_t currentTimeUs)
     }
 
     rxDataProcessingRequired = false;
-    rxNextUpdateAtUs = currentTimeUs + DELAY_50_HZ;
+    rxNextUpdateAtUs = currentTimeUs + DELAY_33_HZ;
 
     // only proceed when no more samples to skip and suspend period is over
     if (skipRxSamples) {
@@ -576,7 +572,7 @@ void parseRcChannels(const char *input, rxConfig_t *rxConfig)
     }
 }
 
-void setRssiFiltered(uint16_t newRssi, rssiSource_e source)
+void setRssiDirect(uint16_t newRssi, rssiSource_e source)
 {
     if (source != rssiSource) {
         return;
@@ -587,7 +583,7 @@ void setRssiFiltered(uint16_t newRssi, rssiSource_e source)
 
 #define RSSI_SAMPLE_COUNT 16
 
-void setRssiUnfiltered(uint16_t rssiValue, rssiSource_e source)
+void setRssi(uint16_t rssiValue, rssiSource_e source)
 {
     if (source != rssiSource) {
         return;
@@ -630,7 +626,7 @@ static void updateRSSIPWM(void)
     }
 
     // Range of rawPwmRssi is [1000;2000]. rssi should be in [0;1023];
-    setRssiFiltered(constrain((uint16_t)(((pwmRssi - 1000) / 1000.0f) * 1024.0f), 0, RSSI_MAX_VALUE), RSSI_SOURCE_RX_CHANNEL);
+    setRssiDirect(constrain(((pwmRssi - 1000) / 1000.0f) * RSSI_MAX_VALUE, 0, RSSI_MAX_VALUE), RSSI_SOURCE_RX_CHANNEL);
 }
 
 static void updateRSSIADC(timeUs_t currentTimeUs)
@@ -646,15 +642,14 @@ static void updateRSSIADC(timeUs_t currentTimeUs)
     rssiUpdateAt = currentTimeUs + DELAY_50_HZ;
 
     const uint16_t adcRssiSample = adcGetChannel(ADC_RSSI);
-    uint16_t rssiValue = (uint16_t)((1024.0f * adcRssiSample) / (rxConfig()->rssi_scale * 100.0f));
-    rssiValue = constrain(rssiValue, 0, RSSI_MAX_VALUE);
+    uint16_t rssiValue = adcRssiSample / RSSI_ADC_DIVISOR;
 
     // RSSI_Invert option
     if (rxConfig()->rssi_invert) {
         rssiValue = RSSI_MAX_VALUE - rssiValue;
     }
 
-    setRssiUnfiltered((uint16_t)rssiValue, RSSI_SOURCE_ADC);
+    setRssi(rssiValue, RSSI_SOURCE_ADC);
 #endif
 }
 
@@ -679,7 +674,12 @@ void updateRSSI(timeUs_t currentTimeUs)
 
 uint16_t getRssi(void)
 {
-    return rssi;
+    return rxConfig()->rssi_scale / 100.0f * rssi + rxConfig()->rssi_offset * RSSI_OFFSET_SCALING;
+}
+
+uint8_t getRssiPercent(void)
+{
+    return scaleRange(getRssi(), 0, RSSI_MAX_VALUE, 0, 100);
 }
 
 uint16_t rxGetRefreshRate(void)

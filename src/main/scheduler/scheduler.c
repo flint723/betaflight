@@ -123,7 +123,7 @@ FAST_CODE cfTask_t *queueNext(void)
     return taskQueueArray[++taskQueuePos]; // guaranteed to be NULL at end of queue
 }
 
-void taskSystem(timeUs_t currentTimeUs)
+void taskSystemLoad(timeUs_t currentTimeUs)
 {
     UNUSED(currentTimeUs);
 
@@ -216,6 +216,19 @@ void schedulerResetTaskStatistics(cfTaskId_e taskId)
     } else if (taskId < TASK_COUNT) {
         cfTasks[taskId].movingSumExecutionTime = 0;
         cfTasks[taskId].totalExecutionTime = 0;
+        cfTasks[taskId].maxExecutionTime = 0;
+    }
+#endif
+}
+
+void schedulerResetTaskMaxExecutionTime(cfTaskId_e taskId)
+{
+#ifdef SKIP_TASK_STATISTICS
+    UNUSED(taskId);
+#else
+    if (taskId == TASK_SELF) {
+        currentTask->maxExecutionTime = 0;
+    } else if (taskId < TASK_COUNT) {
         cfTasks[taskId].maxExecutionTime = 0;
     }
 #endif

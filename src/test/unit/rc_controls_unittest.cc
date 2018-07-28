@@ -52,6 +52,7 @@ extern "C" {
 
     #include "fc/rc_controls.h"
     #include "fc/runtime_config.h"
+    #include "fc/fc_core.h"
 
     #include "scheduler/scheduler.h"
 }
@@ -222,6 +223,10 @@ uint32_t fixedMillis;
 extern "C" {
 uint32_t millis(void) {
     return fixedMillis;
+}
+
+uint32_t micros(void) {
+    return fixedMillis * 1000;
 }
 }
 
@@ -737,3 +742,5 @@ timeDelta_t getTaskDeltaTime(cfTaskId_e) { return 20000; }
 armingDisableFlags_e getArmingDisableFlags(void) {
     return (armingDisableFlags_e) 0;
 }
+bool isTryingToArm(void) { return false; }
+void resetTryingToArm(void) {}

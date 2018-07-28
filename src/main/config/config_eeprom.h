@@ -23,9 +23,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define EEPROM_CONF_VERSION 169
+#define EEPROM_CONF_VERSION 170
 
-bool isEEPROMContentValid(void);
+bool isEEPROMVersionValid(void);
+bool isEEPROMStructureValid(void);
 bool loadEEPROM(void);
 void writeConfigToEEPROM(void);
 uint16_t getEEPROMConfigSize(void);

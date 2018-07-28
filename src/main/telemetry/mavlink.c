@@ -281,7 +281,7 @@ void mavlinkSendRCChannelsAndRSSI(void)
         // chan8_raw RC channel 8 value, in microseconds
         (rxRuntimeConfig.channelCount >= 8) ? rcData[7] : 0,
         // rssi Receive signal strength indicator, 0: 0%, 255: 100%
-        scaleRange(getRssi(), 0, 1023, 0, 255));
+        constrain(scaleRange(getRssi(), 0, RSSI_MAX_VALUE, 0, 255), 0, 255));
     msgLength = mavlink_msg_to_send_buffer(mavBuffer, &mavMsg);
     mavlinkSerialWrite(mavBuffer, msgLength);
 }
@@ -491,12 +491,15 @@ void mavlinkSendHUDAndHeartbeat(void)
         mavCustomMode = 0;      //Stabilize
         mavModes |= MAV_MODE_FLAG_STABILIZE_ENABLED;
     }
-    if (FLIGHT_MODE(BARO_MODE) || FLIGHT_MODE(RANGEFINDER_MODE))
+    if (FLIGHT_MODE(BARO_MODE)) {
         mavCustomMode = 2;      //Alt Hold
-    if (FLIGHT_MODE(GPS_HOME_MODE))
+    }
+    if (FLIGHT_MODE(GPS_HOME_MODE)) {
         mavCustomMode = 6;      //Return to Launch
-    if (FLIGHT_MODE(GPS_HOLD_MODE))
+    }
+    if (FLIGHT_MODE(GPS_HOLD_MODE)) {
         mavCustomMode = 16;     //Position Hold (Earlier called Hybrid)
+    }
 
     uint8_t mavSystemState = 0;
     if (ARMING_FLAG(ARMED)) {

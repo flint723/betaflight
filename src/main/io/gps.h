@@ -72,6 +72,7 @@ typedef struct gpsConfig_s {
     sbasMode_e sbasMode;
     gpsAutoConfig_e autoConfig;
     gpsAutoBaud_e autoBaud;
+    uint8_t gps_ublox_use_galileo;
 } gpsConfig_t;
 
 PG_DECLARE(gpsConfig_t, gpsConfig);
@@ -85,12 +86,11 @@ typedef struct gpsCoordinateDDDMMmmmm_s {
 typedef struct gpsLocation_s {
     int32_t lat;                    // latitude * 1e+7
     int32_t lon;                    // longitude * 1e+7
-    int32_t alt;                   // altitude in 0.1m
+    int32_t alt;                    // altitude in 0.01m
 } gpsLocation_t;
 
 typedef struct gpsSolutionData_s {
     gpsLocation_t llh;
-    uint16_t GPS_altitude;          // altitude in 0.1m
     uint16_t groundSpeed;           // speed in 0.1m/s
     uint16_t groundCourse;          // degrees * 10
     uint16_t hdop;                  // generic HDOP value (*100)
@@ -101,6 +101,7 @@ typedef enum {
     GPS_MESSAGE_STATE_IDLE = 0,
     GPS_MESSAGE_STATE_INIT,
     GPS_MESSAGE_STATE_SBAS,
+    GPS_MESSAGE_STATE_GALILEO,
     GPS_MESSAGE_STATE_ENTRY_COUNT
 } gpsMessageState_e;
 

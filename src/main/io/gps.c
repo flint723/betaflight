@@ -204,6 +204,21 @@ static const ubloxSbas_t ubloxSbas[] = {
     { SBAS_MSAS,  { 0x00, 0x02, 0x02, 0x00, 0x35, 0xEF}},
     { SBAS_GAGAN, { 0x80, 0x01, 0x00, 0x00, 0xB2, 0xE8}}
 };
+
+// Remove QZSS and add Galileo (only 3 GNSS systems supported simultaneously)
+// Frame captured from uCenter
+static const uint8_t ubloxGalileoInit[] = {
+        0xB5, 0x62, 0x06, 0x3E, 0x3C,                       // UBX-CGF-GNSS
+        0x00, 0x00, 0x20, 0x20, 0x07,                       // GNSS
+        0x00, 0x08, 0x10, 0x00, 0x01, 0x00, 0x01, 0x01,     // GPS
+        0x01, 0x01, 0x03, 0x00, 0x01, 0x00, 0x01, 0x01,     // SBAS
+        0x02, 0x04, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01,     // Galileo
+        0x03, 0x08, 0x10, 0x00, 0x00, 0x00, 0x01, 0x01,     // BeiDou
+        0x04, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x03,     // IMES
+        0x05, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x05,     // QZSS
+        0x06, 0x08, 0x0E, 0x00, 0x01, 0x00, 0x01, 0x01,     // GLONASS
+        0x55, 0x47
+};
 #endif // USE_GPS_UBLOX
 
 typedef enum {
@@ -224,7 +239,8 @@ PG_RESET_TEMPLATE(gpsConfig_t, gpsConfig,
     .provider = GPS_NMEA,
     .sbasMode = SBAS_AUTO,
     .autoConfig = GPS_AUTOCONFIG_ON,
-    .autoBaud = GPS_AUTOBAUD_OFF
+    .autoBaud = GPS_AUTOBAUD_OFF,
+    .gps_ublox_use_galileo = false
 );
 
 static void shiftPacketLog(void)
@@ -267,7 +283,6 @@ void gpsInit(void)
 
     serialPortConfig_t *gpsPortConfig = findSerialPortConfig(FUNCTION_GPS);
     if (!gpsPortConfig) {
-        featureClear(FEATURE_GPS);
         return;
     }
 
@@ -289,7 +304,6 @@ void gpsInit(void)
     // no callback - buffer will be consumed in gpsUpdate()
     gpsPort = openSerialPort(gpsPortConfig->identifier, FUNCTION_GPS, NULL, NULL, baudRates[gpsInitData[gpsData.baudrateIndex].baudrateIndex], mode, SERIAL_NOT_INVERTED);
     if (!gpsPort) {
-        featureClear(FEATURE_GPS);
         return;
     }
 
@@ -422,6 +436,17 @@ void gpsInitUblox(void)
                     serialWrite(gpsPort, ubloxSbas[gpsConfig()->sbasMode].message[gpsData.state_position - UBLOX_SBAS_PREFIX_LENGTH]);
                     gpsData.state_position++;
                 } else {
+                    gpsData.state_position = 0;
+                    gpsData.messageState++;
+                }
+            }
+
+            if (gpsData.messageState == GPS_MESSAGE_STATE_GALILEO) {
+                if ((gpsConfig()->gps_ublox_use_galileo) && (gpsData.state_position < sizeof(ubloxGalileoInit))) {
+                    serialWrite(gpsPort, ubloxGalileoInit[gpsData.state_position]);
+                    gpsData.state_position++;
+                } else {
+                    gpsData.state_position = 0;
                     gpsData.messageState++;
                 }
             }
@@ -504,6 +529,11 @@ void gpsUpdate(timeUs_t currentTimeUs)
     if (sensors(SENSOR_GPS)) {
         updateGpsIndicator(currentTimeUs);
     }
+#if defined(USE_GPS_RESCUE)
+    if (gpsRescueIsConfigured()) {
+        updateGPSRescueState();
+    }
+#endif
 }
 
 static void gpsNewData(uint16_t c)
@@ -614,28 +644,36 @@ static uint32_t grab_fields(char *src, uint8_t mult)
 {                               // convert string to uint32
     uint32_t i;
     uint32_t tmp = 0;
+    int isneg = 0;
     for (i = 0; src[i] != 0; i++) {
+        if ((i == 0) && (src[0] == '-')) { // detect negative sign
+            isneg = 1;
+            continue; // jump to next character if the first one was a negative sign
+        }
         if (src[i] == '.') {
             i++;
-            if (mult == 0)
+            if (mult == 0) {
                 break;
-            else
+            } else {
                 src[i + mult] = 0;
+            }
         }
         tmp *= 10;
-        if (src[i] >= '0' && src[i] <= '9')
+        if (src[i] >= '0' && src[i] <= '9') {
             tmp += src[i] - '0';
-        if (i >= 15)
+        }
+        if (i >= 15) {
             return 0; // out of bounds
+        }
     }
-    return tmp;
+    return isneg ? -tmp : tmp;    // handle negative altitudes
 }
 
 typedef struct gpsDataNmea_s {
     int32_t latitude;
     int32_t longitude;
     uint8_t numSat;
-    uint16_t altitude;
+    int32_t altitude;
     uint16_t speed;
     uint16_t hdop;
     uint16_t ground_course;
@@ -706,7 +744,7 @@ static bool gpsNewFrameNMEA(char c)
                             gps_Msg.hdop = grab_fields(string, 1) * 100;          // hdop
                             break;
                         case 9:
-                            gps_Msg.altitude = grab_fields(string, 0);     // altitude in meters added by Mis
+                            gps_Msg.altitude = grab_fields(string, 1) * 10;     // altitude in centimeters. Note: NMEA delivers altitude with 1 or 3 decimals. It's safer to cut at 0.1m and multiply by 10
                             break;
                     }
                     break;

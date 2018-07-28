@@ -18,32 +18,27 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-#include <stdint.h>
-
 #include "platform.h"
 
-#ifdef USE_TARGET_CONFIG
-#include "fc/config.h"
+#ifdef USE_RX_SPI
 
-#include "flight/pid.h"
+#include "drivers/io.h"
+#include "drivers/bus_spi.h"
 
+#include "pg/pg.h"
+#include "pg/pg_ids.h"
+#include "pg/rx_spi.h"
 
-// alternative defaults settings for YuPiF4 targets
-void targetConfiguration(void)
+#include "rx/rx_spi.h"
+
+PG_REGISTER_WITH_RESET_FN(rxSpiConfig_t, rxSpiConfig, PG_RX_SPI_CONFIG, 0);
+
+void pgResetFn_rxSpiConfig(rxSpiConfig_t *rxSpiConfig)
 {
-    /* Specific PID values for YupiF4 */
-    for (uint8_t pidProfileIndex = 0; pidProfileIndex < MAX_PROFILE_COUNT; pidProfileIndex++) {
-        pidProfile_t *pidProfile = pidProfilesMutable(pidProfileIndex);
+    rxSpiConfig->rx_spi_protocol = RX_SPI_DEFAULT_PROTOCOL;
 
-        pidProfile->pid[PID_ROLL].P = 30;
-        pidProfile->pid[PID_ROLL].I = 45;
-        pidProfile->pid[PID_ROLL].D = 20;
-        pidProfile->pid[PID_PITCH].P = 30;
-        pidProfile->pid[PID_PITCH].I = 50;
-        pidProfile->pid[PID_PITCH].D = 20;
-        pidProfile->pid[PID_YAW].P = 40;
-        pidProfile->pid[PID_YAW].I = 50;
-    }
+    // Basic SPI
+    rxSpiConfig->csnTag = IO_TAG(RX_NSS_PIN);
+    rxSpiConfig->spibus = SPI_DEV_TO_CFG(spiDeviceByInstance(RX_SPI_INSTANCE));
 }
 #endif

@@ -29,10 +29,6 @@ typedef struct rxConfig_s {
     uint8_t serialrx_provider;              // type of UART-based receiver (0 = spek 10, 1 = spek 11, 2 = sbus). Must be enabled by FEATURE_RX_SERIAL first.
     uint8_t serialrx_inverted;              // invert the serial RX protocol compared to it's default setting
     uint8_t halfDuplex;                     // allow rx to operate in half duplex mode on F4, ignored for F1 and F3.
-    uint8_t rx_spi_protocol;                // type of SPI RX protocol
-                                            // nrf24: 0 = v202 250kbps. (Must be enabled by FEATURE_RX_NRF24 first.)
-    uint32_t rx_spi_id;
-    uint8_t rx_spi_rf_channel_count;
     ioTag_t spektrum_bind_pin_override_ioTag;
     ioTag_t spektrum_bind_plug_ioTag;
     uint8_t spektrum_sat_bind;              // number of bind pulses for Spektrum satellite receivers
@@ -53,6 +49,13 @@ typedef struct rxConfig_s {
     uint16_t rx_max_usec;
     uint8_t max_aux_channel;
     uint8_t rssi_src_frame_errors;          // true to use frame drop flags in the rx protocol
+    int8_t rssi_offset;                     // offset applied to the RSSI value before it is returned
+    uint8_t rc_smoothing_type;              // Determines the smoothing algorithm to use: INTERPOLATION or FILTER
+    uint8_t rc_smoothing_input_cutoff;      // Filter cutoff frequency for the input filter (0 = auto)
+    uint8_t rc_smoothing_derivative_cutoff; // Filter cutoff frequency for the setpoint weight derivative filter (0 = auto)
+    uint8_t rc_smoothing_debug_axis;        // Axis to log as debug values when debug_mode = RC_SMOOTHING
+    uint8_t rc_smoothing_input_type;        // Input filter type (0 = PT1, 1 = BIQUAD)
+    uint8_t rc_smoothing_derivative_type;   // Derivative filter type (0 = OFF, 1 = PT1, 2 = BIQUAD)
 } rxConfig_t;
 
 PG_DECLARE(rxConfig_t, rxConfig);

@@ -37,6 +37,7 @@
 #endif
 #include "pwm_output.h"
 #include "drivers/nvic.h"
+#include "drivers/time.h"
 #include "dma.h"
 #include "rcc.h"
 
@@ -57,7 +58,7 @@ uint8_t getTimerIndex(TIM_TypeDef *timer)
         }
     }
     dmaMotorTimers[dmaMotorTimerCount++].timer = timer;
-    return dmaMotorTimerCount-1;
+    return dmaMotorTimerCount - 1;
 }
 
 void pwmWriteDshotInt(uint8_t index, uint16_t value)
@@ -68,7 +69,17 @@ void pwmWriteDshotInt(uint8_t index, uint16_t value)
         return;
     }
 
-    uint16_t packet = prepareDshotPacket(motor, value);
+    /*If there is a command ready to go overwrite the value and send that instead*/
+    if (pwmDshotCommandIsProcessing()) {
+        value = pwmGetDshotCommand(index);
+        if (value) {
+            motor->requestTelemetry = true;
+        }
+    }
+
+    motor->value = value;
+
+    uint16_t packet = prepareDshotPacket(motor);
     uint8_t bufferSize;
 
 #ifdef USE_DSHOT_DMAR
@@ -88,6 +99,13 @@ void pwmWriteDshotInt(uint8_t index, uint16_t value)
 void pwmCompleteDshotMotorUpdate(uint8_t motorCount)
 {
     UNUSED(motorCount);
+
+    /* If there is a dshot command loaded up, time it correctly with motor update*/
+    if (pwmDshotCommandIsQueued()) {
+        if (!pwmDshotCommandOutputIsEnabled(motorCount)) {
+            return;
+        }
+    }
 
     for (int i = 0; i < dmaMotorTimerCount; i++) {
 #ifdef USE_DSHOT_DMAR

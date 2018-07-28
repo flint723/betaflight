@@ -40,6 +40,8 @@
 #include "common/streambuf.h"
 #include "common/utils.h"
 
+#include "cms/cms.h"
+
 #include "drivers/nvic.h"
 
 #include "fc/config.h"
@@ -129,7 +131,7 @@ static void crsfInitializeFrame(sbuf_t *dst)
     dst->ptr = crsfFrame;
     dst->end = ARRAYEND(crsfFrame);
 
-    sbufWriteU8(dst, CRSF_ADDRESS_BROADCAST);
+    sbufWriteU8(dst, CRSF_SYNC_BYTE);
 }
 
 static void crsfFinalize(sbuf_t *dst)
@@ -429,6 +431,10 @@ void initCrsfTelemetry(void)
     deviceInfoReplyPending = false;
 #if defined(USE_MSP_OVER_TELEMETRY)
     mspReplyPending = false;
+#endif
+
+#if defined(USE_CMS) && defined(USE_CRSF_CMS_TELEMETRY)
+    cmsDisplayPortRegister(displayPortCrsfInit());
 #endif
 
     int index = 0;

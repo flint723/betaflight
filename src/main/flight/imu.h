@@ -31,6 +31,7 @@ extern int accSumCount;
 extern float accVelScale;
 extern int32_t accSum[XYZ_AXIS_COUNT];
 extern bool canUseGPSHeading;
+extern float accAverage[XYZ_AXIS_COUNT];
 
 typedef struct {
     float w,x,y,z;
@@ -78,12 +79,11 @@ typedef struct imuRuntimeConfig_s {
     accDeadband_t accDeadband;
 } imuRuntimeConfig_t;
 
-void imuConfigure(uint16_t throttle_correction_angle);
+void imuConfigure(uint16_t throttle_correction_angle, uint8_t throttle_correction_value);
 
 float getCosTiltAngle(void);
 void getQuaternion(quaternion * q);
 void imuUpdateAttitude(timeUs_t currentTimeUs);
-int16_t calculateThrottleAngleCorrection(uint8_t throttle_correction_value);
 
 void imuResetAccelerationSum(void);
 void imuInit(void);

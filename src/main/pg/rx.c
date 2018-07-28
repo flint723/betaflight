@@ -29,6 +29,7 @@
 #include "config/config_reset.h"
 
 #include "drivers/io.h"
+#include "fc/fc_rc.h"
 #include "fc/rc_controls.h"
 #include "rx/rx.h"
 #include "rx/rx_spi.h"
@@ -39,7 +40,6 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
     RESET_CONFIG_2(rxConfig_t, rxConfig,
         .halfDuplex = 0,
         .serialrx_provider = SERIALRX_PROVIDER,
-        .rx_spi_protocol = RX_SPI_DEFAULT_PROTOCOL,
         .serialrx_inverted = 0,
         .spektrum_bind_pin_override_ioTag = IO_TAG(SPEKTRUM_BIND_PIN),
         .spektrum_bind_plug_ioTag = IO_TAG(BINDPLUG_PIN),
@@ -53,13 +53,20 @@ void pgResetFn_rxConfig(rxConfig_t *rxConfig)
         .rssi_src_frame_errors = false,
         .rssi_channel = 0,
         .rssi_scale = RSSI_SCALE_DEFAULT,
+        .rssi_offset = 0,
         .rssi_invert = 0,
         .rcInterpolation = RC_SMOOTHING_AUTO,
-        .rcInterpolationChannels = 0,
+        .rcInterpolationChannels = INTERPOLATION_CHANNELS_RPYT,
         .rcInterpolationInterval = 19,
         .fpvCamAngleDegrees = 0,
         .airModeActivateThreshold = 32,
-        .max_aux_channel = DEFAULT_AUX_CHANNEL_COUNT
+        .max_aux_channel = DEFAULT_AUX_CHANNEL_COUNT,
+        .rc_smoothing_type = RC_SMOOTHING_TYPE_INTERPOLATION,
+        .rc_smoothing_input_cutoff = 0,      // automatically calculate the cutoff by default
+        .rc_smoothing_derivative_cutoff = 0, // automatically calculate the cutoff by default
+        .rc_smoothing_debug_axis = ROLL,     // default to debug logging for the roll axis
+        .rc_smoothing_input_type = RC_SMOOTHING_INPUT_BIQUAD,
+        .rc_smoothing_derivative_type = RC_SMOOTHING_DERIVATIVE_BIQUAD,
     );
 
 #ifdef RX_CHANNELS_TAER

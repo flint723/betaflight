@@ -140,7 +140,7 @@ currentMeterADCState_t currentMeterADCState;
 void currentMeterADCInit(void)
 {
     memset(&currentMeterADCState, 0, sizeof(currentMeterADCState_t));
-    biquadFilterInitLPF(&adciBatFilter, IBAT_LPF_FREQ, 50000); //50HZ Update
+    biquadFilterInitLPF(&adciBatFilter, IBAT_LPF_FREQ, 20000); //50HZ Update
 }
 
 void currentMeterADCRefresh(int32_t lastUpdateAt)
@@ -222,8 +222,8 @@ void currentMeterESCRefresh(int32_t lastUpdateAt)
 
     escSensorData_t *escData = getEscSensorData(ESC_SENSOR_COMBINED);
     if (escData && escData->dataAge <= ESC_BATTERY_AGE_MAX) {
-        currentMeterESCState.amperage = escData->current;
-        currentMeterESCState.mAhDrawn = escData->consumption;
+        currentMeterESCState.amperage = escData->current + escSensorConfig()->offset / 10;
+        currentMeterESCState.mAhDrawn = escData->consumption + escSensorConfig()->offset * millis() / (1000.0f * 3600);
     } else {
         currentMeterESCState.amperage = 0;
         currentMeterESCState.mAhDrawn = 0;
